@@ -2,3 +2,5 @@
 *.pytest*
 *.pyc
 *.ipynb
+
+*egg*
