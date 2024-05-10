@@ -1,3 +1,4 @@
+import yaml
 import torch
 import torch.nn as nn
 from lightning import LightningModule
@@ -8,6 +9,8 @@ from torch.nn .functional import softmax
 from torch.nn.functional import cross_entropy
 
 from typing import Dict, Generator, List, Tuple
+
+from transformers import AutoTokenizer
 from transformers import PreTrainedTokenizerBase
 
 from itertools import repeat
@@ -31,8 +34,19 @@ class xLSTM(LightningModule):
     '''
     
     @classmethod
-    def from_config(cls, config: Dict[str, int]) -> 'xLSTM':
-        pass
+    def from_config(cls, conf_path : str, key : str | None = 'llm') -> 'xLSTM':
+        '''
+        Construct a xLSTM from a configuration file.
+        '''
+
+        with open(conf_path, 'r') as f:
+            conf = yaml.safe_load(f)
+
+        conf = conf if key is None else conf[key]
+
+        return cls(
+            **conf,
+        )
     
     def __init__(
         self, 
@@ -44,7 +58,7 @@ class xLSTM(LightningModule):
         head_num : int,
         p_factor : Tuple[float, float] = (2, 4/3),
         ker_size : int = 4,
-        tokenizer: PreTrainedTokenizerBase | None = None,
+        tokenizer: PreTrainedTokenizerBase | str | None = None,
         **kwargs,
     ) -> None:
         '''Initialize the LLM model.
@@ -67,12 +81,14 @@ class xLSTM(LightningModule):
         '''
         super().__init__()
         
-        self.tokenizer = tokenizer
+        if isinstance(tokenizer, str): tokenizer = AutoTokenizer.from_pretrained(tokenizer)
+        
         self.inference_kw = kwargs
+        self.tokenizer = tokenizer
         
         # Needed embedding layer for mapping input tokens to the network
         self.embedding = nn.Embedding(
-            num_embeddings=vocab_size,
+            num_embeddings=vocab_size if tokenizer is None else tokenizer.vocab_size,
             embedding_dim=inp_dim,
         )
         

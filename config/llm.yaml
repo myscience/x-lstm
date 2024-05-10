@@ -1,0 +1,51 @@
+llm:
+  vocab_size: 50257
+  num_layers: 8
+  signature:
+    - 7
+    - 1
+  inp_dim: 64
+  head_dim: 16
+  head_num: 4
+  p_factor:
+    - 2
+    - 1.33333 # 4/3
+  ker_size: 4
+
+  # Parameters relevant for the model inference
+  prompt:
+    - Once upon a time
+    - In a galaxy far far away
+  token_lim: 256
+  use_top_k: 50
+  temperature: 1.
+
+tokenizer:
+  name: openai-community/gpt2
+  special_tokens:
+    pad: <|pad|>
+
+dataset:
+  root: <path_to_data_dir>
+  read_chunk: 1024
+
+misc:
+  resume: null
+
+train:
+  max_epochs: 100
+  accelerator: gpu
+  devices: 4
+  strategy: ddp_find_unused_parameters_false
+  precision: 16
+  log_every_n_steps: 1
+  batch_size: 64
+
+log:
+  log_dir: <path_to_log_dir>
+  run_name: llm-xlstm
+  version: null
+
+ckpt:
+  monitor: val_loss
+  save_last: true
