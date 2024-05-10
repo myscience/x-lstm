@@ -6,7 +6,7 @@ Just for fun, this repo tries to implement a basic LLM (see `📂 xlstm.llm`) us
 
 # Usage
 
-The `xlstm` module exposes both the `sLSTM` (scalar-LSTM) and the `mLSTM` (matrix-LSTM) modules. Both expect their input to have shape `(batch_size, d_input)` as they consume an input sequence sequentially. They output the output tensor of same shape as input (the prediction for the next sequence token) plus their updated hidden states (a tuple of tensors).
+The `xlstm` module exposes both the `sLSTM` (scalar-LSTM) and the `mLSTM` (matrix-LSTM) modules. Both expect their input to have shape `(batch_size, d_input)` as they consume an input sequence sequentially. They output the model current (projected) hidden state `h_t` (which is considered the module output and has the same shape as the input, see Figure 9 in the Appendix of [Beck et al. (2024)](https://arxiv.org/abs/2405.04517)), plus their updated hidden variables (a tuple of tensors).
 
 ```python
 from xlstm import sLSTM
@@ -37,6 +37,7 @@ criterion = ... # Pick some loss function, i.e. MSE
 # Iterate through the sequence length
 loss = 0
 for prev, succ in pairwise(seq):
+    # Get the model prediction plus the updated hidden states
     pred, hid = lstm(prev, hid)
 
     # Target is the next sequence token
