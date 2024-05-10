@@ -76,11 +76,21 @@ class xLSTM(LightningModule):
             embedding_dim=inp_dim,
         )
         
-        lstm_par = {
+        m_factor, s_factor = p_factor
+        
+        mlstm_par = {
             'inp_dim' : inp_dim,
             'head_dim' : head_dim,
             'head_num' : head_num,
-            'p_factor' : p_factor,
+            'p_factor' : m_factor,
+            'ker_size' : ker_size,
+        }
+        
+        slstm_par = {
+            'inp_dim' : inp_dim,
+            'head_dim' : head_dim,
+            'head_num' : head_num,
+            'p_factor' : s_factor,
             'ker_size' : ker_size,
         }
         
@@ -88,7 +98,7 @@ class xLSTM(LightningModule):
         which = [True] * m_num + [False] * s_num
         
         self.llm : List[mLSTM | sLSTM] = nn.ModuleList([
-            mLSTM(**lstm_par) if w else sLSTM(**lstm_par)
+            mLSTM(**mlstm_par) if w else sLSTM(**slstm_par)
             for w, _ in zip(repeat(which), range(num_layers))
         ])
         
@@ -107,8 +117,8 @@ class xLSTM(LightningModule):
 
         Args:
             tok (Tensor): Input tensor representing the sequence tokens.
-                Expected shape: (batch, seq_len, inp_dim) if batch_first=True,
-                else (seq_len, batch, inp_dim).
+                Expected shape: (batch, seq_len) if batch_first=True,
+                else (seq_len, batch).
             hid (Hidden, optional): Cache object for storing intermediate hidden
                 values of the m|s-LSTM blocks of the model. If None, the hidden
                 states are initialized by the models. Defaults to None.
@@ -133,7 +143,8 @@ class xLSTM(LightningModule):
             
             out.append(inp)
             
-        out = torch.stack(out, dim=0 if batch_first else 1)
+        out = torch.stack(out, dim=1 if batch_first else 0)
+        out = self.head(out)
         
         return out, hid
 
