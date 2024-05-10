@@ -33,7 +33,8 @@ class sLSTM(nn.Module):
         inp_dim : int,
         head_dim : int,
         head_num : int,
-        p_factor : int = 4/3,
+        ker_size : int = 4,
+        p_factor : float = 4/3,
     ) -> None:
         super().__init__()
         
@@ -44,7 +45,7 @@ class sLSTM(nn.Module):
         self.inp_norm = nn.LayerNorm(inp_dim)
         self.hid_norm = nn.GroupNorm(head_num, head_dim * head_num)
         
-        self.causal_conv = CausalConv1d(1, 1, kernel_size=4)
+        self.causal_conv = CausalConv1d(1, 1, kernel_size=ker_size)
         
         self.W_z = nn.Linear(inp_dim, head_num * head_dim)
         self.W_i = nn.Linear(inp_dim, head_num * head_dim)
@@ -171,6 +172,7 @@ class mLSTM(nn.Module):
         head_num : int,
         head_dim : int,
         p_factor : int = 2,
+        ker_size : int = 4,
     ) -> None:
         super().__init__()
         
@@ -189,7 +191,7 @@ class mLSTM(nn.Module):
         self.up_r_proj = nn.Linear(inp_dim, hid_dim)
         self.down_proj = nn.Linear(hid_dim, inp_dim)
         
-        self.causal_conv = CausalConv1d(1, 1, kernel_size=4)
+        self.causal_conv = CausalConv1d(1, 1, kernel_size=ker_size)
         
         self.skip = nn.Conv1d(p_factor * inp_dim, hid_dim, kernel_size=1, bias=False)
         

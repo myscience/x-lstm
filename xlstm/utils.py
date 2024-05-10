@@ -4,10 +4,12 @@ import torch.nn as nn
 from einops import rearrange
 
 from torch import Tensor
-from typing import List, TypeVar
+from typing import List, Tuple, TypeVar
 
 T = TypeVar('T')
 D = TypeVar('D')
+
+Hidden = List[Tuple[Tensor, ...]]
 
 def exists(var : T | None) -> bool:
     return var is not None
