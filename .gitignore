@@ -6,3 +6,4 @@
 *egg*
 *log*
 .local
+test/.*
