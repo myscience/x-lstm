@@ -1,17 +1,16 @@
-import yaml
 import torch
 import torch.nn as nn
+from warnings import warn
 from lightning import LightningModule
 
 from torch import Tensor
-from torch.optim import AdamW, Optimizer
+from torch.optim import AdamW
+from torch.optim import Optimizer
 from torch.nn .functional import softmax
 from torch.nn.functional import cross_entropy
 
-from typing import Dict, Generator, List, Tuple
-
-from transformers import AutoTokenizer
 from transformers import PreTrainedTokenizerBase
+from typing import Any, Dict, Generator, List, Tuple, Callable, Iterable
 
 from itertools import repeat
 from einops import rearrange
@@ -20,6 +19,10 @@ from einops import rearrange
 from .lstm import sLSTM
 from .lstm import mLSTM
 from .utils import Hidden
+from .utils import default
+from .utils import TokenizerWrapper
+
+OptimizerCallable = Callable[[Iterable], Optimizer]
 
 class xLSTM(LightningModule):
     '''The extended Long Short Term Memory (xLSTM) module as
@@ -33,21 +36,6 @@ class xLSTM(LightningModule):
     or State-Space models.
     '''
     
-    @classmethod
-    def from_config(cls, conf_path : str, key : str | None = 'llm') -> 'xLSTM':
-        '''
-        Construct a xLSTM from a configuration file.
-        '''
-
-        with open(conf_path, 'r') as f:
-            conf = yaml.safe_load(f)
-
-        conf = conf if key is None else conf[key]
-
-        return cls(
-            **conf,
-        )
-    
     def __init__(
         self, 
         vocab_size : int,
@@ -58,8 +46,9 @@ class xLSTM(LightningModule):
         head_num : int,
         p_factor : Tuple[float, float] = (2, 4/3),
         ker_size : int = 4,
-        tokenizer: PreTrainedTokenizerBase | str | None = None,
-        **kwargs,
+        optimizer : OptimizerCallable = AdamW,
+        tokenizer: TokenizerWrapper | None = None,
+        inference_kw: Dict[str, Any] = {}
     ) -> None:
         '''Initialize the LLM model.
 
@@ -81,14 +70,19 @@ class xLSTM(LightningModule):
         '''
         super().__init__()
         
-        if isinstance(tokenizer, str): tokenizer = AutoTokenizer.from_pretrained(tokenizer)
+        self.optimizer = optimizer
+        self.inference_kw = inference_kw
+        self.tokenizer = None if tokenizer is None else tokenizer.get_tokenizer()
         
-        self.inference_kw = kwargs
-        self.tokenizer = tokenizer
+        num_embeddings = vocab_size if tokenizer is None else\
+            self.tokenizer.vocab_size + len(self.tokenizer.added_tokens_decoder)
+        
+        if num_embeddings != vocab_size:
+            warn('Tokenizer detected. Using tokenizer vocabulary size. Vocabulary size will be ignored.')
         
         # Needed embedding layer for mapping input tokens to the network
         self.embedding = nn.Embedding(
-            num_embeddings=vocab_size if tokenizer is None else tokenizer.vocab_size,
+            num_embeddings=num_embeddings,
             embedding_dim=inp_dim,
         )
         
@@ -140,8 +134,10 @@ class xLSTM(LightningModule):
                 states are initialized by the models. Defaults to None.
 
         Returns:
-            Tuple[Tensor, Hidden]: Output tensor after passing through the model
-                and updated hidden state.
+            Tuple[Tensor, Hidden]: Returns tensor of predicted logits of shape
+                (batch, seq_len, vocab_size) if batch_first=True or of shape
+                (seq_len, batch, vocab_size) if batch_first=False, and the
+                updated hidden model states.
         '''
         
         tok : Tensor = torch.atleast_2d(tok)
@@ -168,13 +164,16 @@ class xLSTM(LightningModule):
     def generate(
         self,
         prompt : str | List[str],
-        tokenizer : PreTrainedTokenizerBase, 
         token_lim : int = 300,
         use_top_k : int = 50,
+        tokenizer : PreTrainedTokenizerBase | None = None, 
         temperature : float = 1.0,
     ) -> Generator[Dict[int, str], None, None]:
         # Set model in evaluation model for inference
         self.eval()
+        
+        tokenizer = default(tokenizer, self.tokenizer)
+        if tokenizer is None: raise ValueError('Tokenizer not available.')
         
         if isinstance(prompt, str):
             prompt = [prompt]
@@ -185,35 +184,34 @@ class xLSTM(LightningModule):
             return_tensors='pt',
             padding=True,
             truncation=True,
-        ).input_ids
+        ).input_ids.to(self.device)
         
         batch_size, inp_len = inp.shape
-        vocab_size = tokenizer.vocab_size # type: ignore
+        vocab_size = tokenizer.vocab_size + len(tokenizer.added_tokens_decoder) # type: ignore
         
         # Consume the prompt to get the hidden states
-        for tok in rearrange(inp, 'b s -> s b 1'):
-            logits, cache = self(tok, cache)
+        logits, hid = self(inp, batch_first=True)
         
         # Start generating the output sequence until either the maximum
         # token limit is reach or the model generates the<|endoftext|> token
         num_tokes = 0
-        out, pred = [inp], tok
-        pidx = torch.arange(batch_size)
+        out, pred = [inp], inp[:, -1]
+        pidx = torch.arange(batch_size, device=self.device)
         
         yield {int(pid) : tokenizer.decode(raw, skip_special_tokens=True) for pid, raw in zip(pidx, inp)}
         
         while num_tokes < token_lim and len(pred):
-            logits, cache = self(pred, cache)
+            logits, hid = self(pred, hid)
             
             # Get the token with the highest probability by zeroing out
             # the probability of the lowest probability tokens
-            prob = softmax(logits[:, -1] / temperature, dim=-1)
+            prob = softmax(logits[-1] / temperature, dim=-1)
             idxs = prob.topk(k=vocab_size - use_top_k, largest=False, sorted=False).indices
             prob.scatter_(dim=-1, index=idxs, src=torch.zeros_like(prob))
             prob /= prob.sum(dim=-1, keepdim=True)
             
             # Sample the next token from the distribution modelled by the llm
-            pred = torch.multinomial(prob, num_samples=1, replacement=True)
+            pred = torch.multinomial(prob, num_samples=1, replacement=True).squeeze()
             
             # Append the token to the input sequence
             out.append(pred)
@@ -221,11 +219,11 @@ class xLSTM(LightningModule):
             num_tokes += 1
             
             # Drop from the batch every prediction that reached the <|endoftext|> token
-            mask = pred.squeeze() != tokenizer.eos_token_id
+            mask = pred != tokenizer.eos_token_id
             
             pred  = pred[mask]
             pidx  = pidx[mask]
-            cache = (cache[0][mask], cache[1][mask])
+            hid = [[val[mask] for val in layer] for layer in hid]
             
             # Yield the decoded tokens
             yield {int(pid) : tokenizer.decode(raw, skip_special_tokens=True) for pid, raw in zip(pidx, pred)}
@@ -307,16 +305,15 @@ class xLSTM(LightningModule):
         output = {pid : ''.join([out[pid] for out in output]) for pid in pids}
         
         for pid, text in output.items():
-            self.logger.experiment.add_text({ # type: ignore
-                    f'Prompt {pid}' : text
-                },
+            self.logger.experiment.add_text(
+                f'Prompt ID:{pid}',
+                text,
                 global_step=self.global_step,
             )
     
     def configure_optimizers(self) -> Optimizer:
-        optim = AdamW(
+        optim = self.optimizer(
             self.parameters(),
-            lr=1e-3
         )
         
         return optim

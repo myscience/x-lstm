@@ -1,3 +1,4 @@
+from tokenizers import AddedToken
 import torch
 import torch.nn as nn
 
@@ -6,7 +7,10 @@ from einops import rearrange
 from torch import Tensor
 from torch.utils.data import get_worker_info
 
-from typing import List, Tuple, TypeVar
+from transformers import AutoTokenizer
+from transformers import PreTrainedTokenizerBase
+
+from typing import Dict, List, Tuple, TypeVar
 
 T = TypeVar('T')
 D = TypeVar('D')
@@ -102,3 +106,42 @@ class BlockLinear(nn.Module):
             out = out + self._bias
         
         return out
+    
+class TokenizerWrapper:
+    '''
+    A wrapper class for tokenizers.
+
+    This class provides a convenient way to initialize and access tokenizers for various pretrained models.
+
+    Args:
+        pretrained_model_name_or_path (str): The name or path of the pretrained model.
+
+    Attributes:
+        tokenizer (PreTrainedTokenizerBase): The tokenizer object.
+
+    Methods:
+        get_tokenizer: Returns the tokenizer object.
+
+    Example:
+        >>> tokenizer = TokenizerWrapper('bert-base-uncased')
+        >>> tokenizer.get_tokenizer()
+        <transformers.tokenization_bert.BertTokenizer object at 0x7f0a5e7a3e10>
+    '''
+
+    def __init__(
+        self,
+        pretrained_model_name_or_path: str,
+        special_tokens: Dict[str, str | AddedToken] = {},    
+    ):
+        self.tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path)
+        self.tokenizer.add_special_tokens(special_tokens)
+    
+
+    def get_tokenizer(self) -> PreTrainedTokenizerBase:
+        '''
+        Returns the tokenizer object.
+
+        Returns:
+            PreTrainedTokenizerBase: The tokenizer object.
+        '''
+        return self.tokenizer

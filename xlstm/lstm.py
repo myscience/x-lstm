@@ -65,6 +65,15 @@ class sLSTM(nn.Module):
         self.up_proj   = nn.Linear(head_num * head_dim, 2 * proj_dim)
         self.down_proj = nn.Linear(proj_dim, inp_dim)
         
+    @property
+    def device(self) -> str:
+        '''Get the device of the model.
+
+        Returns:
+            str: The device of the model.
+        '''
+        return next(self.parameters()).device
+        
     def init_hidden(self) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
         '''Initialize the hidden state of the sLSTM model.
 
@@ -76,10 +85,10 @@ class sLSTM(nn.Module):
                 normalizer state, hidden state, and stabilizer state.
         '''
         
-        n_0 = torch.ones (self.head_num * self.head_dim)
-        c_0 = torch.zeros(self.head_num * self.head_dim)
-        h_0 = torch.zeros(self.head_num * self.head_dim)
-        m_0 = torch.zeros(self.head_num * self.head_dim)
+        n_0 = torch.ones (self.head_num * self.head_dim, device=self.device)
+        c_0 = torch.zeros(self.head_num * self.head_dim, device=self.device)
+        h_0 = torch.zeros(self.head_num * self.head_dim, device=self.device)
+        m_0 = torch.zeros(self.head_num * self.head_dim, device=self.device)
         
         return c_0, n_0, h_0, m_0
         
@@ -187,21 +196,30 @@ class mLSTM(nn.Module):
         
         # NOTE: The factor of two in the output dimension of the up_proj
         # is due to the fact that the output needs to branch into two
-        self.up_l_proj = nn.Linear(inp_dim, p_factor * inp_dim)
+        self.up_l_proj = nn.Linear(inp_dim, int(p_factor * inp_dim))
         self.up_r_proj = nn.Linear(inp_dim, hid_dim)
         self.down_proj = nn.Linear(hid_dim, inp_dim)
         
         self.causal_conv = CausalConv1d(1, 1, kernel_size=ker_size)
         
-        self.skip = nn.Conv1d(p_factor * inp_dim, hid_dim, kernel_size=1, bias=False)
+        self.skip = nn.Conv1d(int(p_factor * inp_dim), hid_dim, kernel_size=1, bias=False)
         
-        self.W_i = nn.Linear(p_factor * inp_dim, head_num)
-        self.W_f = nn.Linear(p_factor * inp_dim, head_num)
-        self.W_o = nn.Linear(p_factor * inp_dim, hid_dim)
+        self.W_i = nn.Linear(int(p_factor * inp_dim), head_num)
+        self.W_f = nn.Linear(int(p_factor * inp_dim), head_num)
+        self.W_o = nn.Linear(int(p_factor * inp_dim), hid_dim)
         
-        self.W_q = nn.Linear(p_factor * inp_dim, hid_dim)
-        self.W_k = nn.Linear(p_factor * inp_dim, hid_dim)
-        self.W_v = nn.Linear(p_factor * inp_dim, hid_dim)
+        self.W_q = nn.Linear(int(p_factor * inp_dim), hid_dim)
+        self.W_k = nn.Linear(int(p_factor * inp_dim), hid_dim)
+        self.W_v = nn.Linear(int(p_factor * inp_dim), hid_dim)
+        
+    @property
+    def device(self) -> str:
+        '''Get the device of the model.
+
+        Returns:
+            str: The device of the model.
+        '''
+        return next(self.parameters()).device
     
     def init_hidden(self, bs : int) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
         '''Initialize the hidden state of the sLSTM model.
@@ -214,9 +232,9 @@ class mLSTM(nn.Module):
                 normalizer state, hidden state, and stabilizer state.
         '''
         
-        c_0 = torch.zeros(bs, self.head_num, self.head_dim, self.head_dim)
-        n_0 = torch.ones (bs, self.head_num, self.head_dim)
-        m_0 = torch.zeros(bs, self.head_num)
+        c_0 = torch.zeros(bs, self.head_num, self.head_dim, self.head_dim, device=self.device)
+        n_0 = torch.ones (bs, self.head_num, self.head_dim               , device=self.device)
+        m_0 = torch.zeros(bs, self.head_num                              , device=self.device)
         
         return c_0, n_0, m_0
     

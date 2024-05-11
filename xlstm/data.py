@@ -3,11 +3,14 @@ from abc import abstractmethod
 
 from torch import Tensor
 from torch.utils.data import DataLoader
+from torch.utils.data import IterableDataset
+
 from lightning import LightningDataModule
 
 from typing import Callable
 
 from .utils import default
+from .utils import default_iterdata_worker_init
 
 class LightningDataset(LightningDataModule):
     '''
@@ -75,6 +78,9 @@ class LightningDataset(LightningDataModule):
         raise NotImplementedError(msg)
 
     def train_dataloader(self) -> DataLoader:
+        if isinstance(self.train_dataset, IterableDataset):
+            worker_init_fn = default(self.worker_init_fn, default_iterdata_worker_init)
+        
         return DataLoader(
             self.train_dataset,                  # type: ignore
             sampler        = self.train_sampler, # type: ignore
@@ -82,10 +88,13 @@ class LightningDataset(LightningDataModule):
             shuffle        = self.train_shuffle,
             collate_fn     = self.collate_fn,
             num_workers    = self.num_workers,
-            worker_init_fn = self.worker_init_fn,
+            worker_init_fn = worker_init_fn,
         )
 
     def val_dataloader(self) -> DataLoader:
+        if isinstance(self.train_dataset, IterableDataset):
+            worker_init_fn = default(self.worker_init_fn, default_iterdata_worker_init)
+        
         return DataLoader(
             self.valid_dataset,                  # type: ignore
             sampler        = self.valid_sampler, # type: ignore
@@ -93,10 +102,13 @@ class LightningDataset(LightningDataModule):
             shuffle        = self.val_shuffle,
             collate_fn     = self.collate_fn,
             num_workers    = self.num_workers,
-            worker_init_fn = self.worker_init_fn,
+            worker_init_fn = worker_init_fn,
         )
 
     def test_dataloader(self) -> DataLoader:
+        if isinstance(self.train_dataset, IterableDataset):
+            worker_init_fn = default(self.worker_init_fn, default_iterdata_worker_init)
+            
         return DataLoader(
             self.test__dataset,                  # type: ignore
             sampler        = self.test__sampler, # type: ignore
@@ -104,5 +116,5 @@ class LightningDataset(LightningDataModule):
             shuffle        = self.val_shuffle,
             collate_fn     = self.collate_fn,
             num_workers    = self.num_workers,
-            worker_init_fn = self.worker_init_fn,
+            worker_init_fn = worker_init_fn,
         )

@@ -7,6 +7,7 @@ from typing import Literal, Tuple, Generator
 from transformers import PreTrainedTokenizerBase
 
 from .data import LightningDataset
+from .utils import TokenizerWrapper
 
 class TinyStories(IterableDataset):
     
@@ -16,7 +17,7 @@ class TinyStories(IterableDataset):
         tokenizer : PreTrainedTokenizerBase,
         max_length : int = 256,
         data_split : Literal['train', 'valid', 'test'] = 'train',
-        read_chunk : int = 1024,
+        read_chunk : int = 4096,
     ) -> None:
         super().__init__()
         
@@ -72,16 +73,22 @@ class TinyStoriesLightning(LightningDataset):
     
     def __init__(
         self,
-        tokenizer : PreTrainedTokenizerBase,
+        tokenizer : TokenizerWrapper,
         root : str = './',
         max_length : int = 256,
+        read_chunk : int = 1024,
         **kwargs,    
     ) -> None:
         super().__init__(**kwargs)
         
         self.root = root
-        self.tokenizer = tokenizer
+        self.tokenizer = tokenizer.get_tokenizer()
         self.max_length = max_length
+        self.read_chunk = read_chunk
+        
+        # NOTE: We ignore the tokenizer key to avoid having
+        #       a repetition with the LightningModule
+        self.save_hyperparameters(ignore=['tokenizer'])
         
     def setup(self, stage: str) -> None:
 
@@ -92,12 +99,14 @@ class TinyStoriesLightning(LightningDataset):
                     tokenizer=self.tokenizer,
                     max_length=self.max_length,
                     data_split='train',
+                    read_chunk=self.read_chunk 
                 )
                 self.valid_dataset = TinyStories(
                     root=self.root,
                     tokenizer=self.tokenizer,
                     max_length=self.max_length,
                     data_split='valid',
+                    read_chunk=self.read_chunk 
                 )
             case 'test':
                 self.test__dataset = TinyStories(
@@ -105,6 +114,7 @@ class TinyStoriesLightning(LightningDataset):
                     tokenizer=self.tokenizer,
                     max_length=self.max_length,
                     data_split='test',
+                    read_chunk=self.read_chunk
                 )
             case _:
                 raise ValueError(f'Invalid stage: {stage}')
