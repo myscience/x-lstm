@@ -178,11 +178,11 @@ for token in stream:
 - [x] Put all the essential pieces together (i.e. `sLSTM` & `mLSTM`)
 - [x] Add implementation for a full `xLSTM`
 - [x] Add functioning training script (Lightning)
-- [ ] Show some results
+- [x] Show some results
 
 # Requirements
 
-To install the required dependencies simply run `pip install -r requirements.txt`.
+Code was tested with Python 3.11+. To install the required dependencies simply run `pip install -r requirements.txt`.
 
 ```
 torch==2.3.0
