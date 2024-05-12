@@ -9,18 +9,23 @@ Just for fun, this repo tries to implement a basic LLM (see `📂 xlstm.llm`) us
 Just for fun I set up to train a small `xLSTM` LLM model on the cute `TinyStories` dataset and logged its progress as it learned (I always find it amusing to read the incoherent first attempts and was actually surprised by how quickly it got the general structure). Here what I get for the highly original `Once upon a time` prompt:
 
 **At initialization**
+
 ```text
 Once upon a timeboro wit carryingabellaastered Greens intestinal Pil su128 configure Patentrowing SeventhNohs implies Burger ® Cities lowacommTYelligimilationbender Manual authored Comprehensivelow fightingrinasq intercourse377 gradientafe bluntlyaroo coats Witchhiba Jeff Flags ambassadors iT deleted Deals reassCruzka...(you get the idea)
 ```
 
 **After 320 steps**
+
 ```text
 Once upon a time. She and took them. He is and they with something. She asked, a big dog on the park. Lily went to the park, ''That wanted it is not she is
 verv hanov into the around's mom man was a lot him to the "Thank
 he couldn't sad and. He is a time. "What and not to go be careful. She was that the little girl, I will. Then it?''' Tom things. He took it they saw a bia."
 ```
 
+![Validation Loss](res/loss.jpeg)
+
 **After 20K steps**
+
 ```text
 Once upon a time. Jack and ran across the hill. When she always a bit embarrassed and felt so much to play!" And they couldn't know what you should always made of the park." One day she wanted to help make some new friends."
 "The boy was so happy to a time.
