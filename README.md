@@ -6,7 +6,7 @@ Just for fun, this repo tries to implement a basic LLM (see `📂 xlstm.llm`) us
 
 # Results
 
-Just for fun I set up to train a small `xLSTM` LLM model on the cute `TinyStories` dataset and logged it progress as it learned (I always find it amusing to read the incoherent first attempts and was actually surprised by how quickly it got the general structure). Here what I get for the highly original `Once upon a time` prompt:
+Just for fun I set up to train a small `xLSTM` LLM model on the cute `TinyStories` dataset and logged its progress as it learned (I always find it amusing to read the incoherent first attempts and was actually surprised by how quickly it got the general structure). Here what I get for the highly original `Once upon a time` prompt:
 
 **At initialization**
 ```text
@@ -18,6 +18,13 @@ Once upon a timeboro wit carryingabellaastered Greens intestinal Pil su128 confi
 Once upon a time. She and took them. He is and they with something. She asked, a big dog on the park. Lily went to the park, ''That wanted it is not she is
 verv hanov into the around's mom man was a lot him to the "Thank
 he couldn't sad and. He is a time. "What and not to go be careful. She was that the little girl, I will. Then it?''' Tom things. He took it they saw a bia."
+```
+
+**After 20K steps**
+```text
+Once upon a time. Jack and ran across the hill. When she always a bit embarrassed and felt so much to play!" And they couldn't know what you should always made of the park." One day she wanted to help make some new friends."
+"The boy was so happy to a time.
+"Lily's help. He was very sorry, there. Then, and it looked at how he saw the ball. When she was happy and had so excited to buy the ground. He used to fly was very happy and daddy was so excited and the car. Timmy went to go home."
 ```
 
 # Usage
@@ -98,13 +105,10 @@ trainer = Trainer(
 trainer.fit(model, dataset)
 ```
 
-Alternatively, one can also run the training script `train.py` directly which expects the configuration file path and accepts all the Trainer arguments.
+Alternatively, one can also run the training script `run.py` directly which leverages the `LightningCLI` API which offers great flexibility for customization. The script expects a configuration file path (see example configuration file in `📂 config/llm.yaml`) and accepts all the Trainer arguments (and more! See [LightningCLI](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.cli.LightningCLI.html#lightning.pytorch.cli.LightningCLI) for reference).
 
 ```bash
-python train.py --config <path_to_config_file>\
-  --max_epochs 500\
-  --accelerator gpu\
-  --devices 4
+python run.py fit --config config/llm.yaml
 ```
 
 A cool feature of `xLSTM` current implementation is the lazy (batched-) inference implemented via a generator. One can thus print tokens on screen as they are streamed by the model, no need to wait for the whole inference to finish! A mock-up script would look like the following.
