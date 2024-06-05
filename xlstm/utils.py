@@ -100,7 +100,7 @@ class BlockLinear(nn.Module):
         # Assemble the blocks into a block-diagonal matrix
         full = torch.block_diag(*self._blocks)
         
-        out = torch.matmul(full, inp)
+        out = torch.matmul(inp, full)
         
         if self._bias is not None:
             out = out + self._bias

@@ -108,8 +108,8 @@ class xLSTM(LightningModule):
         which = [True] * m_num + [False] * s_num
         
         self.llm : List[mLSTM | sLSTM] = nn.ModuleList([
-            mLSTM(**mlstm_par) if w else sLSTM(**slstm_par)
-            for w, _ in zip(repeat(which), range(num_layers))
+            mLSTM(**mlstm_par) if v else sLSTM(**slstm_par)
+            for w in repeat(which, num_layers) for v in w
         ])
         
         # Prediction head to map the output of the xLSTM model to the vocabulary
@@ -144,7 +144,7 @@ class xLSTM(LightningModule):
         seq : Tensor = self.embedding(tok)
         
         if batch_first: seq = rearrange(seq, 'b s i -> s b i')
-        if hid is None: hid = [l.init_hidden(seq.size(1)) for l in self.llm]
+        if hid is None: hid = [l.init_hidden(seq.shape[1]) if isinstance(l, mLSTM) else l.init_hidden() for l in self.llm]
         
         # Pass the sequence through the mLSTM and sLSTM blocks
         out = []
