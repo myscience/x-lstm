@@ -6,7 +6,7 @@ from os import path
 
 from transformers import AutoTokenizer
 
-from xlstm import xLSTM
+from xlstm import xLSTM, mLSTM, sLSTM
 from xlstm.stories import TinyStoriesLightning
 from xlstm.utils import default_iterdata_worker_init
 
@@ -30,6 +30,24 @@ class TestXLSTM(unittest.TestCase):
         
         # Mockup input for example purposes
         self.seq = torch.randint(0, self.vocab_size, (self.batch_size, self.seq_len))
+
+    def test_llm_init(self):
+        LLM = xLSTM(
+            vocab_size = self.vocab_size,
+            num_layers = self.num_layers,
+            signature = self.signature,
+            inp_dim= self.inp_dim,
+            head_dim= self.head_dim,
+            head_num= self.head_num,
+            p_factor= self.p_factor,
+            ker_size = self.ker_size,
+        )
+        
+        m_num, s_num = self.signature
+        which = [True] * m_num + [False] * s_num
+        
+        for layer, kind in zip(LLM.llm, which):
+            self.assertIsInstance(layer, mLSTM if kind else sLSTM)
 
     def test_llm_forward(self):
         
