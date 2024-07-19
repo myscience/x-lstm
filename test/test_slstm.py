@@ -14,7 +14,7 @@ class TestSLSTM(unittest.TestCase):
         self.model = sLSTM(self.inp_dim, self.head_dim, self.head_num)
         self.input = torch.randn(self.batch_size, self.inp_dim)
         
-        self.hid_0 = self.model.init_hidden()
+        self.hid_0 = self.model.init_hidden(self.batch_size)
 
     def test_output_shape(self):
         output, _ = self.model(self.input, self.hid_0)
@@ -22,13 +22,13 @@ class TestSLSTM(unittest.TestCase):
         self.assertEqual(output.shape, (self.batch_size, self.inp_dim))
 
     def test_hidden_shape(self):
-        hid = self.model.init_hidden()
+        hid = self.model.init_hidden(self.batch_size)
         self.assertEqual(len(hid), 4) 
         
-        self.assertEqual(hid[0].shape, (self.hid_dim,))
-        self.assertEqual(hid[1].shape, (self.hid_dim,))
-        self.assertEqual(hid[2].shape, (self.hid_dim,))
-        self.assertEqual(hid[3].shape, (self.hid_dim,))
+        self.assertEqual(hid[0].shape, (self.batch_size, self.hid_dim,))
+        self.assertEqual(hid[1].shape, (self.batch_size, self.hid_dim,))
+        self.assertEqual(hid[2].shape, (self.batch_size, self.hid_dim,))
+        self.assertEqual(hid[3].shape, (self.batch_size, self.hid_dim,))
 
     def test_forward_no_conv(self):
         output, _ = self.model(self.input, self.hid_0)

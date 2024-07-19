@@ -74,7 +74,7 @@ class sLSTM(nn.Module):
         '''
         return next(self.parameters()).device
         
-    def init_hidden(self) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
+    def init_hidden(self, bs : int) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
         '''Initialize the hidden state of the sLSTM model.
 
         Args:
@@ -85,10 +85,10 @@ class sLSTM(nn.Module):
                 normalizer state, hidden state, and stabilizer state.
         '''
         
-        n_0 = torch.ones (self.head_num * self.head_dim, device=self.device)
-        c_0 = torch.zeros(self.head_num * self.head_dim, device=self.device)
-        h_0 = torch.zeros(self.head_num * self.head_dim, device=self.device)
-        m_0 = torch.zeros(self.head_num * self.head_dim, device=self.device)
+        n_0 = torch.ones (bs, self.head_num * self.head_dim, device=self.device)
+        c_0 = torch.zeros(bs, self.head_num * self.head_dim, device=self.device)
+        h_0 = torch.zeros(bs, self.head_num * self.head_dim, device=self.device)
+        m_0 = torch.zeros(bs, self.head_num * self.head_dim, device=self.device)
         
         return c_0, n_0, h_0, m_0
         
