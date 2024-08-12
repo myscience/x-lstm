@@ -264,8 +264,8 @@ class mLSTM(nn.Module):
         
         # Compute the causal convolutional input (to be 
         # used for the query and key gates)
-        x_c = self.causal_conv(x_t) # shape: b 1 (i * p_factor)
-        x_c = silu(x_c).squeeze()   # shape: b (i * p_factor)
+        x_c = self.causal_conv(x_t)                    # shape: b 1 (i * p_factor)
+        x_c = rearrange(silu(x_c), 'b ... -> b (...)') # shape: b   (i * p_factor)
         
         q_t = rearrange(self.W_q(x_c), 'b (h d) -> b h d', h=self.head_num)
         k_t = rearrange(self.W_k(x_c), 'b (h d) -> b h d', h=self.head_num) / sqrt(self.head_dim)
