@@ -266,7 +266,14 @@ class mLSTM(nn.Module):
         # used for the query and key gates)
         x_c = self.causal_conv(x_t) # shape: b 1 (i * p_factor)
         x_c = silu(x_c).squeeze()   # shape: b (i * p_factor)
-        
+
+        wq_xc = self.W_q(x_c)
+        wq_xc = wq_xc if wq_xc.dim() != 1 else wq_xc.unsqueeze(0)
+        wk_xc = self.W_k(x_c)
+        wk_xc = wk_xc if wk_xc.dim() != 1 else wk_xc.unsqueeze(0)
+        wv_xt = self.W_v(x_t)
+        wv_xt = wv_xt if wv_xt.dim() != 1 else wv_xt.unsqueeze(0)
+
         q_t = rearrange(self.W_q(x_c), 'b (h d) -> b h d', h=self.head_num)
         k_t = rearrange(self.W_k(x_c), 'b (h d) -> b h d', h=self.head_num) / sqrt(self.head_dim)
         v_t = rearrange(self.W_v(x_t), 'b (h d) -> b h d', h=self.head_num)
@@ -290,6 +297,8 @@ class mLSTM(nn.Module):
                 einsum(n_t, q_t, 'b h d, b h d -> b h').clamp(min=1).unsqueeze(-1),
                 'b h d -> b (h d)'
             ) # Eq. (21) in ref. paper
+
+        x_c = x_c if x_c.dim() != 1 else x_c.unsqueeze(0)
 
         x_c = rearrange(x_c, 'b i -> b i 1')
         out = self.hid_norm(h_t) + self.skip(x_c).squeeze() # shape: b (h d)
